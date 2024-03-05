@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import styles from './ToggleSwitch.module.css' // Import CSS module
 
 const ToggleSwitch = () => {
-  const [isChecked, setIsChecked] = useState(false)
+  const [isChecked, setIsChecked] = useState(true)
 
   const handleChange = () => {
     setIsChecked(!isChecked)
