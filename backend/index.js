@@ -1,6 +1,8 @@
 const express = require('express')
 const http = require('http')
 const socketIo = require('socket.io')
+// const io = require('socket.io')(3001)
+
 const fs = require('fs')
 const { exec } = require('child_process')
 const path = require('path')
@@ -30,169 +32,63 @@ const server = http.createServer(app)
 const io = socketIo(server)
 
 let connectedClients = 0
-const csv = require('csv-parser')
 
-const results = []
-const results1 = []
-const results2 = []
+let sensorData = {
+  gps: {
+    latitude: 0,
+    longitude: 0,
+    altitude: 0,
+  },
+  imu: {
+    x: 0,
+    y: 0,
+    z: 0,
+  },
+  lidar: {
+    minData: 0,
+  },
+}
 
-let isHeaderLine = true // Flag to track header lines
+async function main() {
+  // Initialize ROS node
+  await rosnodejs.initNode('/listener_node')
 
-let rowIndex = 0 // Initialize row index counter
-
-fs.readFile('./csvs/mallet_imu_ong.csv', 'utf8', (err, data) => {
-  if (err) {
-    console.error('Error reading file:', err)
-    return
-  }
-
-  // Split the file data into rows
-  const rows = data.trim().split('\n')
-
-  // Process each row
-  rows.forEach((row, index) => {
-    // Split the row by commas to get individual values
-    const values = row.trim().split(',')
-
-    // Parse values into variables
-    const accelerationX = parseFloat(values[0])
-    const accelerationY = parseFloat(values[1])
-    const accelerationZ = parseFloat(values[2])
-    const roll = parseFloat(values[3])
-    const pitch = parseFloat(values[4])
-    const yaw = parseFloat(values[5])
-    // const latitude = parseFloat(values[6])
-    // const longitude = parseFloat(values[7])
-
-    // Construct the data object
-    const dataObject = {
-      accelerationX,
-      accelerationY,
-      accelerationZ,
-      roll,
-      pitch,
-      yaw,
-      // latitude,
-      // longitude,
+  const imu_listener = rosnodejs.nh.subscribe(
+    '/imu',
+    'sensor_msgs/Imu',
+    (msg) => {
+      // console.log('Received message:', msg)
+      // Emit the received message to the Socket.IO clients
+      io.emit('imu_data', msg)
     }
+  )
 
-    // Push the data object into the results array
-    results.push(dataObject)
-  })
-  // console.log(results.length)
-  console.log('IMU file processing completed')
+  const imageSubscriber = rosnodejs.nh.subscribe(
+    '/mobile_robot/camera1/image_raw',
+    'sensor_msgs/Image',
+    (data) => {
+      const base64ImageData = Buffer.from(data.data).toString('base64')
 
-  // Emit each data object from the results array at a custom rate
-  let currentIndex = 0
-  const interval = setInterval(() => {
-    if (currentIndex < results.length) {
-      // const socket = socketIOClient(ENDPOINT)
-      // console.log('Yessir')
-      io.emit('dataUpdate', results[currentIndex])
-      currentIndex++
-    } else {
-      clearInterval(interval) // Stop the interval when all data has been emitted
+      // Emit the base64 image data over Socket.IO
+      io.emit('image_data', base64ImageData)
     }
-  }, 14000 / results.length)
-})
+  )
 
-fs.readFile('./csvs/mallet_cmd_real.csv', 'utf8', (err, data) => {
-  if (err) {
-    console.error('Error reading file:', err)
-    return
-  }
-
-  // Split the file data into rows
-  const rows = data.trim().split('\n')
-  console.log(rows.length)
-
-  // Process each row
-  rows.forEach((row, index) => {
-    // Split the row by commas to get individual values
-    const values = row.trim().split(',')
-
-    // Parse values into variables
-    const linearX = parseFloat(values[0])
-    const linearY = parseFloat(values[1])
-    const linearZ = parseFloat(values[2])
-    const angularX = parseFloat(values[3])
-    const angularY = parseFloat(values[4])
-    const angularZ = parseFloat(values[5])
-
-    // Construct the data object
-    const dataObject = {
-      linearX,
-      linearY,
-      linearZ,
-      angularX,
-      angularY,
-      angularZ,
+  // Create a subscriber to the ROS topic
+  const gps_listener = rosnodejs.nh.subscribe(
+    '/gps/fix',
+    'sensor_msgs/NavSatFix',
+    (msg) => {
+      console.log('Received message:', msg)
+      // Emit the received message to the Socket.IO clients
+      io.emit('ros_data', msg)
     }
+  )
+}
 
-    // Push the data object into the results array
-    results1.push(dataObject)
-  })
-  console.log(results1.length)
-  console.log('CMD file processing completed')
+let roscoreProcess = null
 
-  // Emit each data object from the results array at a custom rate
-  let currentIndex = 0
-  const interval = setInterval(() => {
-    if (currentIndex < results1.length) {
-      // const socket = socketIOClient(ENDPOINT)
-      // console.log('Yessir')
-      io.emit('dataUpdate1', results1[currentIndex])
-      currentIndex++
-    } else {
-      clearInterval(interval) // Stop the interval when all data has been emitted
-    }
-  }, 14000 / results1.length)
-})
-
-fs.readFile('./csvs/mallet_gps_real.csv', 'utf8', (err, data) => {
-  if (err) {
-    console.error('Error reading file:', err)
-    return
-  }
-
-  // Split the file data into rows
-  const rows = data.trim().split('\n')
-  console.log(rows.length)
-
-  // Process each row
-  rows.forEach((row, index) => {
-    // Split the row by commas to get individual values
-    const values = row.trim().split(',')
-
-    // Parse values into variables
-    const latitude = parseFloat(values[0])
-    const longitude = parseFloat(values[1])
-
-    // Construct the data object
-    const dataObject = {
-      latitude,
-      longitude,
-    }
-
-    // Push the data object into the results array
-    results2.push(dataObject)
-  })
-  console.log(results2.length)
-  console.log('GPS file processing completed')
-
-  // Emit each data object from the results array at a custom rate
-  let currentIndex = 0
-  const interval = setInterval(() => {
-    if (currentIndex < results2.length) {
-      // const socket = socketIOClient(ENDPOINT)
-      // console.log('Yessir')
-      io.emit('dataUpdate2', results2[currentIndex])
-      currentIndex++
-    } else {
-      clearInterval(interval) // Stop the interval when all data has been emitted
-    }
-  }, 14000 / results2.length)
-})
+main().catch(console.error)
 
 io.on('connection', (socket) => {
   connectedClients++
@@ -205,63 +101,91 @@ io.on('connection', (socket) => {
     )
   })
 
-  socket.on('executels', () => {
-    const directoryPath = '../frontend/' // Change this to your desired directory
-    const command = 'ls'
-
-    // Execute the command with the specified directory as the working directory
-    exec(command, { cwd: directoryPath }, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`exec error: ${error}`)
-        socket.emit('commandResult', { success: false, error: error.message })
-      } else {
-        console.log(`stdout: ${stdout}`)
-        console.error(`stderr: ${stderr}`)
-        socket.emit('lsResult', { success: true, output: stdout })
-      }
-    })
-  })
-
-  socket.on('executepwd', () => {
+  socket.on('rpilaunch', () => {
     const directoryPath = '../' // Change this to your desired directory
-    const command = './bashes/test.sh'
+    const command = './bashes/rpi_launch.sh'
+    // const command = 'ls'
 
     // Execute the command with the specified directory as the working directory
     exec(command, { cwd: directoryPath }, (error, stdout, stderr) => {
       if (error) {
         console.error(`exec error: ${error}`)
-        socket.emit('commandResult', { success: false, error: error.message })
+        socket.emit('rpilaunchResult', { success: false, error: error.message })
       } else {
         console.log(`stdout: ${stdout}`)
         console.error(`stderr: ${stderr}`)
-        socket.emit('pwdResult', { success: true, output: stdout })
+        console.log('Command executed successfully')
+        socket.emit('rpilaunchResult', { success: true, output: stdout })
       }
     })
   })
 
-  const rostopicEcho = spawn('rostopic', ['echo', '/camera_image/image_raw'])
-  const outputBuffer = [] // Buffer to store the latest output lines
+  socket.on('roscore', () => {
+    const directoryPath = '../' // Change this to your desired directory
+    const command = './bashes/jetson_roscore.sh'
 
-  rostopicEcho.stdout.on('data', (data) => {
-    const outputLines = data.toString().split('\n')
-    const latestLines = outputLines.slice(-20) // Get the last 20 lines
-    const formattedOutput = latestLines.join('\n')
-    console.log(formattedOutput)
-    socket.emit('rostopic-data', formattedOutput)
+    // Execute the command with the specified directory as the working directory
+    exec(command, { cwd: directoryPath }, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`)
+        socket.emit('roscoreResult', { success: false, error: error.message })
+      } else {
+        console.log(`stdout: ${stdout}`)
+        console.error(`stderr: ${stderr}`)
+        socket.emit('roscoreResult', { success: true, output: stdout })
+      }
+    })
   })
 
-  rostopicEcho.stderr.on('data', (data) => {
-    // Handle any errors
-    console.error(`Error: ${data}`)
+  socket.on('jetsonsensor', () => {
+    const directoryPath = '../' // Change this to your desired directory
+    const command = './bashes/jetson_sensor.sh'
+
+    // Execute the command with the specified directory as the working directory
+    exec(command, { cwd: directoryPath }, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`)
+        socket.emit('sensorResult', { success: false, error: error.message })
+      } else {
+        console.log(`stdout: ${stdout}`)
+        console.error(`stderr: ${stderr}`)
+        socket.emit('sensorResult', { success: true, output: stdout })
+      }
+    })
   })
 
-  rostopicEcho.on('close', (code) => {
-    console.log(`child process exited with code ${code}`)
+  socket.on('susensor', () => {
+    const directoryPath = '../' // Change this to your desired directory
+    const command = './bashes/jetson_susensor.sh'
+
+    // Execute the command with the specified directory as the working directory
+    exec(command, { cwd: directoryPath }, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`)
+        socket.emit('susensorResult', { success: false, error: error.message })
+      } else {
+        console.log(`stdout: ${stdout}`)
+        console.error(`stderr: ${stderr}`)
+        socket.emit('susensorResult', { success: true, output: stdout })
+      }
+    })
   })
 
-  socket.on('disconnect', () => {
-    // Clean up the spawned process when the client disconnects
-    rostopicEcho.kill()
+  socket.on('planner', () => {
+    const directoryPath = '../' // Change this to your desired directory
+    const command = './bashes/planner.sh'
+
+    // Execute the command with the specified directory as the working directory
+    exec(command, { cwd: directoryPath }, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`)
+        socket.emit('plannerResult', { success: false, error: error.message })
+      } else {
+        console.log(`stdout: ${stdout}`)
+        console.error(`stderr: ${stderr}`)
+        socket.emit('plannerResult', { success: true, output: stdout })
+      }
+    })
   })
 
   // Handle 'update_data' event

@@ -1,7 +1,12 @@
 import { Button } from '@nextui-org/react'
-import React from 'react'
+import React, { useState } from 'react'
+import io from 'socket.io-client'
 
-const Buttons = () => {
+const Buttons = ({ handleButtonClick }) => {
+  const [status, setStatus] = useState('')
+
+  const socket = io('http://localhost:5000')
+
   return (
     <div className='flex flex-col justify-around'>
       <Button
@@ -14,8 +19,9 @@ const Buttons = () => {
           width: '100%',
           border: '2px solid #FFFFFF',
           marginBottom: '10px',
-        }}>
-        ssh Jetson
+        }}
+        onClick={() => handleButtonClick('rpilaunch')}>
+        Rpi Launch
       </Button>
       <Button
         size='lg'
@@ -27,7 +33,8 @@ const Buttons = () => {
           width: '100%',
           border: '2px solid #FFFFFF',
           marginBottom: '10px',
-        }}>
+        }}
+        onClick={() => handleButtonClick('roscore')}>
         Roscore
       </Button>
       <Button
@@ -40,8 +47,9 @@ const Buttons = () => {
           width: '100%',
           border: '2px solid #FFFFFF',
           marginBottom: '10px',
-        }}>
-        ssh RPi
+        }}
+        onClick={() => handleButtonClick('jetsonsensor')}>
+        Jetson Sensors
       </Button>
       <Button
         size='lg'
@@ -53,8 +61,9 @@ const Buttons = () => {
           width: '100%',
           border: '2px solid #FFFFFF',
           marginBottom: '10px',
-        }}>
-        RPi - Launch Sensors
+        }}
+        onClick={() => handleButtonClick('susensor')}>
+        susensor Launch
       </Button>
       <Button
         size='lg'
@@ -65,20 +74,8 @@ const Buttons = () => {
           color: '#3ec363',
           width: '100%',
           border: '2px solid #FFFFFF',
-          marginBottom: '10px',
-        }}>
-        Jetson - Launch Sensors
-      </Button>
-      <Button
-        size='lg'
-        radius='lg'
-        variant='ghost'
-        style={{
-          fontSize: '25px',
-          color: '#3ec363',
-          width: '100%',
-          border: '2px solid #FFFFFF',
-        }}>
+        }}
+        onClick={() => handleButtonClick('planner')}>
         Run Planner
       </Button>
     </div>

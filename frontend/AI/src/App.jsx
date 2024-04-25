@@ -1,5 +1,6 @@
 import { useState, useEffect, React } from 'react'
-import socketIOClient from 'socket.io-client'
+import { io } from 'socket.io-client'
+// socketIOClient,
 import ProgressBar from './components/ProgressBar'
 import { Switch } from '@nextui-org/react'
 import ToggleSwitch from './components/ToggleSwitch'
@@ -8,11 +9,19 @@ import CoordinateList from './components/CoordinateList'
 import Sensor from './components/Sensor'
 import logo from './images/MRM_logo.png'
 import Buttons from './components/Buttons'
+import CommandOutput from './components/CommandOutput'
 
 const ENDPOINT = 'http://localhost:5000'
+const socket = io('http://localhost:5000')
 
 function App() {
+  const [rosData, setRosData] = useState('')
+  const [imageSrc, setImageSrc] = useState('')
   const [imuData, setImuData] = useState(null)
+  const [error, setError] = useState(false)
+  // const [output, setOutput] = useState('')
+  const [command, setCommand] = useState('')
+
   const [aidata, setAiData] = useState({
     accelerationX: 0,
     accelerationY: 0,
@@ -36,36 +45,36 @@ function App() {
     angularZ: 0,
   })
 
+  const handleButtonClick = (command) => {
+    setCommand(command)
+    socket.emit(command)
+  }
+
   useEffect(() => {
-    const socket = socketIOClient(ENDPOINT)
-    socket.on('imuData', (data) => {
-      setImuData(data)
+    // const socket = socketIOClient(ENDPOINT)
+
+    socket.on('ros_data', (data) => {
+      setRosData(data)
+      console.log('Yasss')
     })
 
-    socket.on('dataUpdate2', (updatedData) => {
-      setGpsData(updatedData)
-      // console.log(updatedData)
-    })
-
-    socket.on('dataUpdate1', (updatedData1) => {
-      setCmd(updatedData1)
-      console.log(updatedData1)
-    })
-
-    socket.on('dataUpdate', (updatedData) => {
-      setAiData(updatedData)
-      // console.log(updatedData)
+    socket.on('image_data', (base64ImageData) => {
+      setImageSrc(base64ImageData)
+      setError(false)
     })
 
     return () => {
       socket.disconnect()
     }
   }, [])
+  const handleImageError = () => {
+    setError(true) // Set error state if image fails to load
+  }
   return (
     <div>
       <div className='h-screen w-screen grid grid-cols-6 grid-row-10 gap-2'>
         <div className='grid grid-cols-6 col-span-6 row-span-1 justify-center items-center b text-center m-0.5 gap-2'>
-          <div className='border border-white h-full w-full flex justify-center items-center'>
+          <div className='border border-white h-full w-full flex justify-center items-center rounded-lg'>
             <Image
               title='y no work'
               src={logo}
@@ -78,10 +87,10 @@ function App() {
           <ProgressBar />
           <div className='border border-white h-full w-full rounded-lg bg-zinc-800 shadow-md flex-col align-middle pt-2'>
             <h2 style={{ fontSize: '32px' }}>
-              Current Latitude : {gpsData.latitude}
+              Current Latitude : {rosData.latitude}
             </h2>
             <h2 style={{ fontSize: '32px' }}>
-              Current Longitude : {gpsData.longitude}
+              Current Longitude : {rosData.longitude}
             </h2>
           </div>
         </div>
@@ -98,23 +107,17 @@ function App() {
           </div>
         </div>
         <div className='row-span-7 col-span-2 border border-white p-4 m-0.5 text-center rounded-lg bg-zinc-800 shadow-md'>
-          Camera Feed
+          <img src={imageSrc} alt='ROS Image Feed' />
         </div>
         <div className='row-span-7 col-span-2 border border-white p-4 m-0.5 text-center rounded-lg bg-zinc-800 shadow-md'>
           {/* <TerminalWindow /> */}
-          ROS Logs
+          <CommandOutput />
         </div>
         <div className='row-span-9 border border-white p-4 m-0.5 text-center rounded-lg bg-zinc-800 shadow-md'>
           <CoordinateList />
         </div>
         <div className='border border-white p-4 m-0.5 text-center row-span-2  rounded-lg bg-zinc-800 shadow-md'>
-          <Buttons />
-          {/* <Button variant='outlined' size='large'>
-            Launch
-          </Button> */}
-          {/* <Button size='lg' radius='lg' variant='ghost'>
-            Launch
-          </Button> */}
+          <Buttons handleButtonClick={handleButtonClick} />
         </div>
 
         <div className='  border border-white p-4 m-0.5 text-center  row-span-2 rounded-lg bg-zinc-800 shadow-md'>
@@ -131,20 +134,19 @@ function App() {
               third: 'Acceleration Z',
             }}
           />
-          {/* Hi */}
         </div>
         <div className=' border border-white p-4 m-0.5 text-center row-span-2 rounded-lg bg-zinc-800 shadow-md'>
           <Sensor
             name='GPS'
             data={{
-              first: aidata.roll,
-              second: aidata.pitch,
-              third: aidata.yaw,
+              first: rosData.latitude,
+              second: rosData.longitude,
+              third: rosData.altitude,
             }}
             sensorName={{
-              first: 'Roll',
-              second: 'Pitch',
-              third: 'Yaw',
+              first: 'Latitude',
+              second: 'Longitude',
+              third: 'Altitude',
             }}
           />
         </div>
