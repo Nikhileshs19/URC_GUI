@@ -103,8 +103,9 @@ io.on('connection', (socket) => {
 
   socket.on('rpilaunch', () => {
     const directoryPath = '../' // Change this to your desired directory
-    const command = './bashes/rpi_launch.sh'
+    const command = './bashes/test.sh'
     // const command = 'ls'
+    // console.log('Launching RPi')
 
     // Execute the command with the specified directory as the working directory
     exec(command, { cwd: directoryPath }, (error, stdout, stderr) => {
@@ -114,7 +115,8 @@ io.on('connection', (socket) => {
       } else {
         console.log(`stdout: ${stdout}`)
         console.error(`stderr: ${stderr}`)
-        console.log('Command executed successfully')
+        // console.log(stdout)
+        // console.log('Command executed successfully')
         socket.emit('rpilaunchResult', { success: true, output: stdout })
       }
     })

@@ -15,6 +15,7 @@ const ENDPOINT = 'http://localhost:5000'
 const socket = io('http://localhost:5000')
 
 function App() {
+  const [output, setOutput] = useState('')
   const [rosData, setRosData] = useState('')
   const [imageSrc, setImageSrc] = useState('')
   const [imuData, setImuData] = useState(null)
@@ -47,9 +48,13 @@ function App() {
 
   const handleButtonClick = (command) => {
     setCommand(command)
+    console.log(`Command:${command}`)
     socket.emit(command)
   }
-
+  socket.on('rpilaunchResult', (data) => {
+    setOutput(data.output)
+    console.log(data.output)
+  })
   useEffect(() => {
     // const socket = socketIOClient(ENDPOINT)
 
@@ -67,6 +72,69 @@ function App() {
       socket.disconnect()
     }
   }, [])
+
+  useEffect(() => {
+    // const socket = io('http://localhost:5000')
+
+    // Clear the output when a new command is triggered
+
+    console.log(command)
+    socket.on('rpilaunchResult', (data) => {
+      setOutput('')
+      setOutput(data.output)
+
+      console.log(data.output)
+    })
+
+    // Event listeners for receiving output from the backend based on the selected command
+    if (command === 'rpilaunch') {
+      socket.on('rpilaunchResult', (data) => {
+        setOutput('')
+        setOutput(data.output)
+        console.log(data.output)
+      })
+    }
+
+    // Event listeners for receiving output from the backend based on the selected command
+    if (command === 'susensorLaunch') {
+      socket.on('susensorResult', (data) => {
+        setOutput('')
+        setOutput(data.output)
+      })
+    }
+
+    // Event listeners for receiving output from the backend based on the selected command
+    if (command === 'sensorLaunch') {
+      socket.on('sensorResult', (data) => {
+        setOutput('')
+        setOutput(data.output)
+      })
+    }
+
+    // Event listeners for receiving output from the backend based on the selected command
+    if (command === 'plannerLaunch') {
+      socket.on('plannerResult', (data) => {
+        setOutput('')
+        setOutput(data.output)
+        console.log(data.output)
+      })
+    }
+
+    // Event listeners for receiving output from the backend based on the selected command
+    if (command === 'roscoreLaunch') {
+      socket.on('roscoreResult', (data) => {
+        setOutput('')
+        setOutput(data.output)
+        console.log(data.output)
+      })
+    }
+
+    // console.log('Setting up event listeners for command:', command)
+    // Add event listeners for other commands if needed
+
+    return () => socket.disconnect() // Clean up on unmount
+  }, [])
+
   const handleImageError = () => {
     setError(true) // Set error state if image fails to load
   }
@@ -111,7 +179,11 @@ function App() {
         </div>
         <div className='row-span-7 col-span-2 border border-white p-4 m-0.5 text-center rounded-lg bg-zinc-800 shadow-md'>
           {/* <TerminalWindow /> */}
-          <CommandOutput />
+          {/* <CommandOutput /> */}
+          <div>
+            Output
+            <pre>{output}</pre>
+          </div>
         </div>
         <div className='row-span-9 border border-white p-4 m-0.5 text-center rounded-lg bg-zinc-800 shadow-md'>
           <CoordinateList />

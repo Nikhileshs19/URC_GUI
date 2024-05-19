@@ -1,4 +1,6 @@
 import { data } from 'autoprefixer'
+import { comma } from 'postcss/lib/list'
+import { io } from 'socket.io-client'
 import React, { useState, useEffect } from 'react'
 import socketIOClient from 'socket.io-client'
 
@@ -8,14 +10,21 @@ const CommandOutput = ({ command }) => {
   const [output, setOutput] = useState('')
 
   useEffect(() => {
-    const socket = socketIOClient(ENDPOINT)
+    const socket = io('http://localhost:5000')
 
     setOutput('') // Clear the output when a new command is triggered
+
+    console.log(command)
+    socket.on('rpilaunchResult', (data) => {
+      setOutput(data.output)
+      console.log(data.output)
+    })
 
     // Event listeners for receiving output from the backend based on the selected command
     if (command === 'rpilaunch') {
       socket.on('rpilaunchResult', (data) => {
         setOutput(data.output)
+        console.log(data.output)
       })
     }
 
